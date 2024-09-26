@@ -1,59 +1,19 @@
 import streamlit as st
 from datetime import datetime, timedelta
-from google_auth_oauthlib.flow import InstalledAppFlow
+from google.oauth2 import service_account
 from googleapiclient.discovery import build
-import os
-import pickle
-from google.auth.transport.requests import Request
 
-# Authenticate and create a calendar instance
+# Authenticate and create a calendar instance using service account
 def authenticate_google_calendar():
-    SCOPES = ['https://www.googleapis.com/auth/calendar']
-    creds = None
+    # Load the credentials from Streamlit secrets
+    calendar_api = st.secrets["CalendarAPI"]
+    
+    # Create a service account credentials object
+    credentials = service_account.Credentials.from_service_account_info(calendar_api)
 
-    # Check if token.pickle exists for stored user credentials
-    if os.path.exists('token.pickle'):
-        with open('token.pickle', 'rb') as token:
-            creds = pickle.load(token)
-
-    # If there are no (valid) credentials available, let the user log in.
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
-            # Use Streamlit secrets for client_id and client_secret
-            client_id = st.secrets["google"]["client_id"]
-            client_secret = st.secrets["google"]["client_secret"]
-            flow = InstalledAppFlow.from_client_config(
-                {
-                    "installed": {
-                        "client_id": client_id,
-                        "client_secret": client_secret,
-                        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                        "token_uri": "https://oauth2.googleapis.com/token",
-                        "redirect_uris": ["http://localhost"]
-                    }
-                },
-                SCOPES
-            )
-            # Using run_console instead of run_local_server
-            if st.session_state.get("auth_code") is None:
-                auth_url, _ = flow.authorization_url(access_type='offline', include_granted_scopes='true')
-                st.markdown(f'**Authorize the app by visiting this URL:** [Authorize]({auth_url})')
-                st.text_input("Enter the authorization code here:", key="auth_code")
-
-            # After entering the authorization code
-            if st.session_state.get("auth_code"):
-                flow.fetch_token(code=st.session_state["auth_code"])
-                creds = flow.credentials
-
-                # Save the credentials for the next run
-                with open('token.pickle', 'wb') as token:
-                    pickle.dump(creds, token)
-
-    calendar_service = build('calendar', 'v3', credentials=creds)
+    # Build the Google Calendar service
+    calendar_service = build('calendar', 'v3', credentials=credentials)
     return calendar_service
-
 
 # Create an event
 def create_event(calendar_service, summary, location, description, start, end, attendees):
@@ -185,7 +145,7 @@ def main():
             update_button = st.form_submit_button("Update Event")
             if update_button:
                 update_event(calendar_service, event_id, summary, location, description, start, end, attendees)
-                
+
                 # Clear the fields after successful update
                 st.session_state["event_id"] = ""
                 st.session_state["summary"] = ""
@@ -222,13 +182,12 @@ def main():
         if selected_event_summary:
             # Fetch details of the selected event
             selected_event = next(event for event in event_data if event['Summary'] == selected_event_summary)
-            st.session_state["event_id"] = selected_event['id']
-            st.session_state["summary"] = selected_event['Summary']
-            st.session_state["location"] = selected_event['Location']
-            st.session_state["description"] = selected_event['Description']
-            st.session_state["attendees"] = selected_event['Attendees']
-            st.session_state["start_date"] = selected_event['Start']
-            # You can store more information in session_state if needed
+            st.write(f"### Summary: {selected_event['Summary']}")
+            st.write(f"**Start:** {selected_event['Start']}")
+            st.write(f"**Location:** {selected_event['Location']}")
+            st.write(f"**Description:** {selected_event['Description']}")
+            st.write(f"**Attendees:** {selected_event['Attendees']}")
+            st.markdown(f"[View Event]({selected_event['Link']})")
 
 if __name__ == "__main__":
     main()
