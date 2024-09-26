@@ -1,5 +1,4 @@
 import streamlit as st
-import json
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 
@@ -7,7 +6,21 @@ from googleapiclient.discovery import build
 st.title("Google Calendar Events")
 
 # Load the service account credentials from Streamlit secrets
-credentials_info = json.loads(st.secrets["CalendarAPI"])
+credentials_info = {
+    "type": st.secrets["CalendarAPI"]["type"],
+    "project_id": st.secrets["CalendarAPI"]["project_id"],
+    "private_key_id": st.secrets["CalendarAPI"]["private_key_id"],
+    "private_key": st.secrets["CalendarAPI"]["private_key"].replace("\\n", "\n"),  # Replace escaped newline
+    "client_email": st.secrets["CalendarAPI"]["client_email"],
+    "client_id": st.secrets["CalendarAPI"]["client_id"],
+    "auth_uri": st.secrets["CalendarAPI"]["auth_uri"],
+    "token_uri": st.secrets["CalendarAPI"]["token_uri"],
+    "auth_provider_x509_cert_url": st.secrets["CalendarAPI"]["auth_provider_x509_cert_url"],
+    "client_x509_cert_url": st.secrets["CalendarAPI"]["client_x509_cert_url"],
+    "universe_domain": st.secrets["CalendarAPI"]["universe_domain"],
+}
+
+# Create credentials from the loaded info
 credentials = service_account.Credentials.from_service_account_info(credentials_info)
 
 # Build the Google Calendar API service
