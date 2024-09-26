@@ -10,12 +10,12 @@ from google.auth.transport.requests import Request
 def authenticate_google_calendar():
     SCOPES = ['https://www.googleapis.com/auth/calendar']
     creds = None
-    
+
     # Check if token.pickle exists for stored user credentials
     if os.path.exists('token.pickle'):
         with open('token.pickle', 'rb') as token:
             creds = pickle.load(token)
-    
+
     # If there are no (valid) credentials available, let the user log in.
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
@@ -36,14 +36,24 @@ def authenticate_google_calendar():
                 },
                 SCOPES
             )
-            creds = flow.run_local_server(port=0)
+            # Using run_console instead of run_local_server
+            if st.session_state.get("auth_code") is None:
+                auth_url, _ = flow.authorization_url(access_type='offline', include_granted_scopes='true')
+                st.markdown(f'**Authorize the app by visiting this URL:** [Authorize]({auth_url})')
+                st.text_input("Enter the authorization code here:", key="auth_code")
 
-        # Save the credentials for the next run
-        with open('token.pickle', 'wb') as token:
-            pickle.dump(creds, token)
+            # After entering the authorization code
+            if st.session_state.get("auth_code"):
+                flow.fetch_token(code=st.session_state["auth_code"])
+                creds = flow.credentials
+
+                # Save the credentials for the next run
+                with open('token.pickle', 'wb') as token:
+                    pickle.dump(creds, token)
 
     calendar_service = build('calendar', 'v3', credentials=creds)
     return calendar_service
+
 
 # Create an event
 def create_event(calendar_service, summary, location, description, start, end, attendees):
