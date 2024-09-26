@@ -1,6 +1,7 @@
 import streamlit as st
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
+from datetime import datetime
 
 # Function to authenticate with Google Calendar API
 def authenticate_google_calendar():
@@ -48,20 +49,26 @@ st.title("Google Calendar Event Creator")
 summary = st.text_input("Event Summary", "")
 location = st.text_input("Event Location", "")
 description = st.text_area("Event Description", "")
-start_time = st.datetime_input("Start Time")
-end_time = st.datetime_input("End Time")
+start_date = st.date_input("Start Date")
+start_time = st.time_input("Start Time")
+end_date = st.date_input("End Date")
+end_time = st.time_input("End Time")
 
 # Create event button
 if st.button("Create Event"):
-    if summary and start_time and end_time:
+    if summary and start_date and start_time and end_date and end_time:
         calendar_service = authenticate_google_calendar()
+        
+        # Combine date and time into ISO format
+        start_datetime = datetime.combine(start_date, start_time).isoformat()
+        end_datetime = datetime.combine(end_date, end_time).isoformat()
         
         event_details = {
             'summary': summary,
             'location': location,
             'description': description,
-            'start': start_time.isoformat(),
-            'end': end_time.isoformat(),
+            'start': start_datetime,
+            'end': end_datetime,
         }
         
         event = create_event(calendar_service, event_details)
